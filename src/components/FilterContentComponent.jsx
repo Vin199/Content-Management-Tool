@@ -507,7 +507,7 @@ const FilterContentComponent = () => {
                           <div className="p-2 bg-gray-100 rounded-lg border border-gray-200">
                             <CheckboxComponent 
                               nodeKey={classKey} 
-                              label={`${getDisplayLabel(className, 'Class')} (${subjectCount} subjects)`} 
+                              label={`Class: ${getDisplayLabel(className, 'Class')} (${subjectCount} subjects)`} 
                               hasChildren={true} 
                             />
                           </div>
@@ -619,7 +619,7 @@ const FilterContentComponent = () => {
           <div className="flex justify-center items-center">
             <img src={iPrepLogo} alt="iDream Logo" className='max-w-48' />
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Content Selection Tool</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">iDream Content Selection Tool</h1>
           <p className="text-gray-600 mb-2">Upload your Excel file to get started</p>
           
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 hover:border-gray-400 transition-colors">
@@ -664,7 +664,7 @@ const FilterContentComponent = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
       <div className="mb-6">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Content Selection Tool</h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">iDream Content Selection Tool</h1>
         <p className="text-gray-600">Select the content you want to include in your filtered Excel file. All content is selected by default.</p>
       </div>
 
