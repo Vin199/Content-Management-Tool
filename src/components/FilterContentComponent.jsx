@@ -14,12 +14,14 @@ const FilterContentComponent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [processingProgress, setProcessingProgress] = useState(0);
   const [loadingStage, setLoadingStage] = useState('');
+  const [originalRowData, setOriginalRowData] = useState({}); //state variable to store original row order
   
   const abortControllerRef = useRef(null);
 
   // Optimized data processing with progress tracking, deduplication, and empty cell preservation
   const processExcelData = useCallback(async (workbook) => {
     const processedData = {};
+    const originalData = {}; // Store original row sequence
     const initialSelection = {};
     const initialExpanded = {};
     const totalSheets = workbook.SheetNames.length;
@@ -41,6 +43,7 @@ const FilterContentComponent = () => {
       
       if (jsonData.length > 0) {
         processedData[sheetName] = new Map();
+        originalData[sheetName] = []; // Store original order here
         initialSelection[sheetName] = { checked: true, indeterminate: false };
         initialExpanded[sheetName] = false; // Start collapsed for performance
         
@@ -79,7 +82,17 @@ const FilterContentComponent = () => {
             const chapterKey = `${subjectKey}-${chapterName}`;
             const topicKey = `${chapterKey}-${topicName}`;
 
-            // Initialize nested structure with Maps for better performance
+            // Add to original data array to preserve order
+            if (!uniqueTracker.has(uniqueId)) {
+              uniqueTracker.add(uniqueId);
+              const rowWithKeys = {
+                ...originalRow,
+                _topicKey: topicKey // Add selection key for filtering
+              };
+              originalData[sheetName].push(rowWithKeys);
+            }
+
+            // Initialize nested structure with Maps for UI hierarchy
             if (!processedData[sheetName].has(className)) {
               processedData[sheetName].set(className, new Map());
               initialSelection[classKey] = { checked: true, indeterminate: false };
@@ -106,10 +119,9 @@ const FilterContentComponent = () => {
               initialSelection[topicKey] = { checked: true, indeterminate: false };
             }
 
-            // Always add the original row data (including empty cells) if not duplicate
-            if (!uniqueTracker.has(uniqueId)) {
-              uniqueTracker.add(uniqueId);
-              // Store original row data with preserved empty cells
+            // Store in hierarchy for UI
+            if (!uniqueTracker.has(uniqueId + '_ui')) {
+              uniqueTracker.add(uniqueId + '_ui');
               chapterData.get(topicName).push(originalRow);
             }
           });
@@ -122,8 +134,7 @@ const FilterContentComponent = () => {
       }
     }
     
-    // Don't clean up empty entries - preserve the structure as-is
-    return { processedData, initialSelection, initialExpanded };
+    return { processedData, originalData, initialSelection, initialExpanded };
   }, []);
 
   // Handle file upload with progress
@@ -155,9 +166,10 @@ const FilterContentComponent = () => {
           raw: false // Keep original formatting
         });
 
-        const { processedData, initialSelection, initialExpanded } = await processExcelData(workbook);
+        const { processedData, originalData, initialSelection, initialExpanded } = await processExcelData(workbook);
         
         setData(processedData);
+        setOriginalRowData(originalData); // Store original order
         setSelection(initialSelection);
         setExpandedNodes(initialExpanded);
         setFileUploaded(true);
@@ -309,43 +321,30 @@ const FilterContentComponent = () => {
     return filtered;
   }, [data, searchTerm]);
 
-  // Optimized data extraction for download
+  //getFilteredData to use original row order
   const getFilteredData = useCallback(() => {
     const result = {};
     
-    Object.keys(data).forEach(category => {
+    Object.keys(originalRowData).forEach(category => {
       if (selection[category]?.checked || selection[category]?.indeterminate) {
-        result[category] = [];
-        
-        data[category].forEach((classes, className) => {
-          const classKey = `${category}-${className}`;
-          if (selection[classKey]?.checked || selection[classKey]?.indeterminate) {
-            
-            classes.forEach((subjects, subjectName) => {
-              const subjectKey = `${classKey}-${subjectName}`;
-              if (selection[subjectKey]?.checked || selection[subjectKey]?.indeterminate) {
-                
-                subjects.forEach((chapters, chapterName) => {
-                  const chapterKey = `${subjectKey}-${chapterName}`;
-                  if (selection[chapterKey]?.checked || selection[chapterKey]?.indeterminate) {
-                    
-                    chapters.forEach((topics, topicName) => {
-                      const topicKey = `${chapterKey}-${topicName}`;
-                      if (selection[topicKey]?.checked) {
-                        result[category].push(...topics);
-                      }
-                    });
-                  }
-                });
-              }
-            });
-          }
+        // Filter original data based on selection, preserving order
+        const filteredRows = originalRowData[category].filter(row => {
+          const topicKey = row._topicKey;
+          return selection[topicKey]?.checked;
         });
+        
+        if (filteredRows.length > 0) {
+          // Remove the internal _topicKey before adding to result
+          result[category] = filteredRows.map(row => {
+            const { _topicKey, ...cleanRow } = row;
+            return cleanRow;
+          });
+        }
       }
     });
     
     return result;
-  }, [data, selection]);
+  }, [originalRowData, selection]);
 
   // Download function with exact original data preservation and no trailing empty rows
   const downloadFilteredExcel = useCallback(async () => {
