@@ -152,11 +152,11 @@ const FilterContentComponent = () => {
 
     reader.onload = async (e) => {
       try {
-        const data = e.target.result;
+        const data = e.target.result; // This will be an ArrayBuffer
         setLoadingStage('Parsing Excel file...');
         
         const workbook = XLSX.read(data, {
-          type: 'binary',
+          type: 'array', // Changed from 'binary' to 'array'
           cellStyles: false, // Disable for performance
           cellFormulas: false,
           cellDates: true,
@@ -164,7 +164,7 @@ const FilterContentComponent = () => {
           sheetStubs: true, // Include empty cells
           defval: '', // Default value for empty cells
           raw: false // Keep original formatting
-        });
+        });        
 
         const { processedData, originalData, initialSelection, initialExpanded } = await processExcelData(workbook);
         
@@ -183,7 +183,7 @@ const FilterContentComponent = () => {
       }
     };
 
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   }, [processExcelData]);
 
   // Optimized selection update with debouncing
